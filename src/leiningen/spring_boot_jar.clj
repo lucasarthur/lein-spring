@@ -43,6 +43,14 @@
         (cp c (.toFile (paths-get (str target-dir) (relativize classes-dir c))))))
     (main/info (count classes) "classes copied to:" (.getAbsolutePath target-dir))))
 
+(defn- copy-resources [^File resources-dir ^File target-dir]
+  (let [resources (filter #(.isFile %) (file-seq resources-dir))]
+    (doseq [c resources]
+      (let [target-file (.toFile (paths-get (str target-dir) (relativize resources-dir c)))]
+        (.mkdirs (.getParentFile target-file))
+        (cp c (.toFile (paths-get (str target-dir) (relativize resources-dir c))))))
+    (main/info (count resources) "resources copied to:" (.getAbsolutePath target-dir))))
+
 (defn- resolve-boot-loader-jar ^JarFile [project ^File target-dir]
   (let [dep (first (classpath/resolve-dependencies :boot-loader (assoc project :boot-loader [['org.springframework.boot/spring-boot-loader (:spring-boot-loader-version project)]])))
         target-file (io/file target-dir (.getName dep))]
@@ -132,10 +140,12 @@
         lib-path (path boot-inf "lib")
         classes (:compile-path project)
         classes-path (path boot-inf "classes")
+        resources "resources"
         launcher-jar-dir (path target-dir "boot-launcher-jar")
         launcher-jar-classes (path target-dir "boot-launcher-classes")]
     (copy-deps project (io/file lib-path))
     (copy-classes (io/file classes) (io/file classes-path))
+    (copy-resources (io/file resources) (io/file launcher-jar-classes))
     (->> (resolve-boot-loader-jar
           (update project :spring-boot-loader-version (fnil identity spring-boot-loader-version-default))
           (io/file launcher-jar-dir))
